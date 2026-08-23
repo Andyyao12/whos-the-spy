@@ -1,0 +1,11 @@
+node_modules
+.next
+.git
+.gitignore
+.codebuddy
+.railway
+Dockerfile
+docker-compose*
+*.md
+README.md
+npm-debug.log
