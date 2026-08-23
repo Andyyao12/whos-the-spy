@@ -6,6 +6,7 @@ import { PublicPlayer } from "@/lib/types";
 import { RoomCtx } from "./RoomCtx";
 import MyWordCard from "./MyWordCard";
 import LeaveRoomButton from "./LeaveRoomButton";
+import BackToLobbyButton from "./BackToLobbyButton";
 
 export default function GameView({ code, state, identity, isHost, refresh }: RoomCtx) {
   const [confirmTarget, setConfirmTarget] = useState<PublicPlayer | null>(null);
@@ -157,12 +158,21 @@ export default function GameView({ code, state, identity, isHost, refresh }: Roo
         </div>
       )}
 
-      <LeaveRoomButton
-        code={code}
-        playerToken={identity.playerToken}
-        label="退出游戏"
-        message="退出后将无法继续本局游戏，确定退出吗？"
-      />
+      {isHost ? (
+        <BackToLobbyButton
+          code={code}
+          hostToken={identity.hostToken!}
+          onBack={refresh}
+          message="返回房间后本局将重新洗牌，房间和玩家都会保留。确定返回吗？"
+        />
+      ) : (
+        <LeaveRoomButton
+          code={code}
+          playerToken={identity.playerToken}
+          label="退出游戏"
+          message="退出后将无法继续本局游戏，确定退出吗？"
+        />
+      )}
 
       {localTarget && (
         <div

@@ -54,6 +54,13 @@ function nextAvatar(room: Room): string {
   return AVATARS[onlineCount % AVATARS.length];
 }
 
+function nextRandomAvatar(room: Room): string {
+  const used = new Set(room.players.map((p) => p.avatar));
+  const unused = AVATARS.filter((a) => !used.has(a));
+  const pool = unused.length > 0 ? unused : AVATARS;
+  return pool[Math.floor(Math.random() * pool.length)];
+}
+
 function makePlayer(partial: Partial<Player> & { displayName: string }): Player {
   return {
     id: crypto.randomUUID(),
@@ -236,7 +243,7 @@ export class PartyRoomDO extends DurableObject<CloudflareEnv> {
       if (room.players.length >= MAX_PLAYERS) throw new RoomError("房间已满（16 人）", 409);
       const player = makePlayer({
         displayName: nextLocalName(room),
-        avatar: "👤",
+        avatar: nextRandomAvatar(room),
         type: "LOCAL",
         seat: room.players.length,
       });
