@@ -1,21 +1,14 @@
 import { DurableObject } from "cloudflare:workers";
-import type { Room, Player, PublicRoomState, PublicPlayer } from "./types";
-import { randomRoomCode } from "./code";
-import { pickWordPair } from "./word-bank";
+import type { Room, Player, PublicRoomState, PublicPlayer } from "../lib/types";
+import { randomRoomCode } from "../lib/code";
+import { pickWordPair } from "../lib/word-bank";
+import { RoomError } from "../lib/room-error";
 
 const ROOM_TTL_MS = 6 * 60 * 60 * 1000; // 6 小时
 const MAX_PLAYERS = 16;
 const MIN_PLAYERS = 3;
 const AVATARS = ["🐼", "🦊", "🐸", "🐯", "🐵", "🐶", "🐱", "🐰"];
 const ROOMS_KEY = "rooms";
-
-export class RoomError extends Error {
-  status: number;
-  constructor(message: string, status = 400) {
-    super(message);
-    this.status = status;
-  }
-}
 
 // RPC 返回统一结构，避免 DO 抛错序列化不可控
 export type DoResult<T> =

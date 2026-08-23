@@ -1,7 +1,7 @@
 {
   "$schema": "node_modules/wrangler/config-schema.json",
-  "main": ".open-next/worker.js",
-  "name": "party-game",
+  "main": "worker.ts",
+  "name": "whos-the-spy",
   "compatibility_date": "2026-08-20",
   "compatibility_flags": ["nodejs_compat", "global_fetch_strictly_public"],
   "assets": {
@@ -13,7 +13,7 @@
       // Self-reference service binding, the service name must match the worker name
       // see https://opennext.js.org/cloudflare/caching
       "binding": "WORKER_SELF_REFERENCE",
-      "service": "party-game"
+      "service": "whos-the-spy"
     }
   ],
   "durable_objects": {
@@ -32,7 +32,7 @@
   ],
   "routes": [
     {
-      "pattern": "game.138887.xyz",
+      "pattern": "spy-game.138887.xyz",
       "custom_domain": true
     }
   ],

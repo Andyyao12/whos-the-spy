@@ -4,5 +4,5 @@
 
 interface CloudflareEnv {
   ASSETS: Fetcher;
-  PARTY_ROOM: DurableObjectNamespace<import("./lib/room-do").PartyRoomDO>;
+  PARTY_ROOM: DurableObjectNamespace<import("./durable-objects/party-room").PartyRoomDO>;
 }

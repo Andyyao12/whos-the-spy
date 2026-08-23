@@ -1,11 +1,11 @@
 import { getCloudflareContext } from "@opennextjs/cloudflare";
 import type { PublicRoomState, Room, Player } from "./types";
-import type { DoResult, PartyRoomDO } from "./room-do";
-import { RoomError } from "./room-do";
+import type { DoResult, PartyRoomDO } from "../durable-objects/party-room";
+import { RoomError } from "./room-error";
 
-export { RoomError } from "./room-do";
+export { RoomError } from "./room-error";
 
-const ROOMS_DO_ID = "party-game-rooms";
+const ROOMS_DO_ID = "whos-the-spy-rooms";
 
 async function callDo<T>(
   invoke: (stub: DurableObjectStub<PartyRoomDO>) => Promise<DoResult<T>>
