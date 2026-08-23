@@ -29,6 +29,18 @@ export default function ResultView({ code, state, identity, isHost, refresh }: R
       <div className="text-center pt-2">
         <div className="text-5xl mb-2">🏁</div>
         <h1 className="text-3xl font-bold text-slate-900">游戏结束</h1>
+        {state.winner === "SPIES" && (
+          <div className="mt-2 inline-flex items-center gap-2 rounded-full bg-red-50 border border-red-200 px-4 py-1.5">
+            <span className="text-lg">🕵️</span>
+            <span className="font-bold text-red-600">卧底胜利</span>
+          </div>
+        )}
+        {state.winner === "CIVILIANS" && (
+          <div className="mt-2 inline-flex items-center gap-2 rounded-full bg-cyan-50 border border-cyan-200 px-4 py-1.5">
+            <span className="text-lg">🎉</span>
+            <span className="font-bold text-cyan-700">平民胜利</span>
+          </div>
+        )}
       </div>
 
       <div className="bg-white rounded-3xl shadow-sm border border-cyan-100 p-5 flex flex-col gap-3">

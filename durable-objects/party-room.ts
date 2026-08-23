@@ -94,6 +94,7 @@ function toPublicState(room: Room): PublicRoomState {
   if (gameEnd) {
     state.civilianWord = room.civilianWord;
     state.spyWord = room.spyWord;
+    state.winner = room.winner;
   }
   return state;
 }
@@ -102,6 +103,7 @@ function dealCards(room: Room) {
   const { civilianWord, spyWord } = pickWordPair(room.topicCategory);
   room.civilianWord = civilianWord;
   room.spyWord = spyWord;
+  room.winner = undefined;
   // Fisher-Yates 洗牌玩家索引，前 spyCount 个为卧底
   const indices = room.players.map((_, i) => i);
   for (let i = indices.length - 1; i > 0; i--) {
@@ -341,10 +343,19 @@ export class PartyRoomDO extends DurableObject<CloudflareEnv> {
       if (!player) throw new RoomError("玩家不存在", 404);
       if (!player.revealed) {
         player.revealed = true;
-        const allSpiesRevealed = room.players
-          .filter((p) => p.role === "SPY")
-          .every((p) => p.revealed);
-        if (allSpiesRevealed) room.status = "GAME_END";
+        // 根据在场（未揭示）人数判定胜负：
+        // - 所有卧底都被揭示 → 平民胜利
+        // - 在场平民 ≤ 在场卧底 → 卧底胜利（平民已无人数优势）
+        const alive = room.players.filter((p) => !p.revealed);
+        const aliveSpies = alive.filter((p) => p.role === "SPY").length;
+        const aliveCivilians = alive.filter((p) => p.role === "CIVILIAN").length;
+        if (aliveSpies === 0) {
+          room.status = "GAME_END";
+          room.winner = "CIVILIANS";
+        } else if (aliveCivilians <= aliveSpies) {
+          room.status = "GAME_END";
+          room.winner = "SPIES";
+        }
         await this.save();
       }
       return ok(null);

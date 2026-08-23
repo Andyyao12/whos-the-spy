@@ -1,6 +1,7 @@
 export type GameStatus = "WAITING" | "PLAYING" | "GAME_END";
 export type PlayerType = "ONLINE" | "LOCAL";
 export type Role = "CIVILIAN" | "SPY";
+export type Winner = "CIVILIANS" | "SPIES";
 
 export interface Player {
   id: string;
@@ -25,6 +26,7 @@ export interface Room {
   civilianWord: string;
   spyWord: string;
   createdAt: number;
+  winner?: Winner;
 }
 
 export interface PublicPlayer {
@@ -45,4 +47,5 @@ export interface PublicRoomState {
   players: PublicPlayer[];
   civilianWord?: string;
   spyWord?: string;
+  winner?: Winner;
 }
