@@ -153,15 +153,22 @@ export class PartyRoomDO extends DurableObject<CloudflareEnv> {
   }
 
   private assertHostOrThrow(room: Room, hostToken: string | null) {
-    if (!hostToken || hostToken !== room.hostToken) {
+    if (!hostToken) throw new RoomError("仅房主可执行此操作", 403);
+    const isHostPlayerToken = room.players.some((p) => p.isHost && p.token === hostToken);
+    if (hostToken !== room.hostToken && !isHostPlayerToken) {
       throw new RoomError("仅房主可执行此操作", 403);
     }
   }
 
   private findPlayerOrThrow(room: Room, token: string | null): Player {
     const player = room.players.find((p) => p.token === token && token);
-    if (!player) throw new RoomError("身份已失效，请重新加入", 401);
-    return player;
+    if (player) return player;
+    // room.hostToken 是房间级房主令牌（非任何玩家的 token），用它也能定位到房主
+    if (token && token === room.hostToken) {
+      const host = room.players.find((p) => p.isHost);
+      if (host) return host;
+    }
+    throw new RoomError("身份已失效，请重新加入", 401);
   }
 
   async createRoom(): Promise<DoResult<{ room: Room; host: Player }>> {
