@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { api } from "@/lib/client";
 import { RoomCtx } from "./RoomCtx";
+import LeaveRoomButton from "./LeaveRoomButton";
 
 export default function ResultView({ code, state, identity, isHost, refresh }: RoomCtx) {
   const [showAll, setShowAll] = useState(false);
@@ -52,6 +53,11 @@ export default function ResultView({ code, state, identity, isHost, refresh }: R
           >
             <span className="text-3xl">{p.avatar}</span>
             <span className="text-lg font-semibold text-slate-800">{p.nickname}</span>
+            {p.type === "LOCAL" && (
+              <span className="text-[10px] font-bold text-white bg-amber-500 rounded-full px-2 py-0.5">
+                线下
+              </span>
+            )}
           </div>
         ))}
       </div>
@@ -84,6 +90,11 @@ export default function ResultView({ code, state, identity, isHost, refresh }: R
             <div key={p.id} className="flex items-center gap-3 px-2 py-1.5">
               <span className="text-2xl">{p.avatar}</span>
               <span className="flex-1 font-medium text-slate-700">{p.nickname}</span>
+              {p.type === "LOCAL" && (
+                <span className="text-[10px] font-bold text-white bg-amber-500 rounded-full px-2 py-0.5">
+                  线下
+                </span>
+              )}
               <span
                 className={`text-xs font-bold rounded-full px-2.5 py-1 ${
                   p.revealedRole === "SPY"
@@ -116,9 +127,17 @@ export default function ResultView({ code, state, identity, isHost, refresh }: R
           >
             返回房间
           </button>
+          <LeaveRoomButton
+            code={code}
+            playerToken={identity.playerToken}
+            message="你是房主，退出将解散房间，所有玩家会被移出。确定退出吗？"
+          />
         </>
       ) : (
-        <p className="text-center text-slate-400 py-2">等待房主再来一局…</p>
+        <>
+          <p className="text-center text-slate-400 py-2">等待房主再来一局…</p>
+          <LeaveRoomButton code={code} playerToken={identity.playerToken} />
+        </>
       )}
     </div>
   );

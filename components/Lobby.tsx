@@ -4,15 +4,18 @@ import { useState } from "react";
 import { QRCodeSVG } from "qrcode.react";
 import { api } from "@/lib/client";
 import { TOPICS } from "@/lib/word-bank";
+import { AVATARS } from "@/lib/avatars";
 import { PublicPlayer } from "@/lib/types";
 import { RoomCtx } from "./RoomCtx";
+import LeaveRoomButton from "./LeaveRoomButton";
 
 export default function Lobby({ code, state, identity, isHost, myId, refresh }: RoomCtx) {
   const [copied, setCopied] = useState(false);
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
-  const [editingName, setEditingName] = useState(false);
+  const [editing, setEditing] = useState<PublicPlayer | null>(null);
   const [nameInput, setNameInput] = useState("");
+  const [avatarSel, setAvatarSel] = useState("");
 
   const joinUrl =
     typeof window !== "undefined" ? `${window.location.origin}/j/${code}` : `/j/${code}`;
@@ -32,64 +35,113 @@ export default function Lobby({ code, state, identity, isHost, myId, refresh }: 
     }
   }
 
+  function legacyCopy(text: string) {
+    const ta = document.createElement("textarea");
+    ta.value = text;
+    ta.setAttribute("readonly", "");
+    ta.style.position = "fixed";
+    ta.style.top = "-9999px";
+    ta.style.opacity = "0";
+    document.body.appendChild(ta);
+    ta.select();
+    ta.setSelectionRange(0, text.length);
+    const ok = document.execCommand("copy");
+    document.body.removeChild(ta);
+    return ok;
+  }
+
   function copyLink() {
-    navigator.clipboard
-      .writeText(joinUrl)
-      .then(() => {
-        setCopied(true);
-        setTimeout(() => setCopied(false), 1500);
-      })
-      .catch(() => setError("复制失败，请手动复制"));
+    const done = () => {
+      setCopied(true);
+      setTimeout(() => setCopied(false), 1500);
+    };
+    const fail = () => setError("复制失败，请手动复制");
+
+    // Clipboard API 仅在安全上下文且非受限 iframe 中可用，需判空
+    if (navigator.clipboard && window.isSecureContext) {
+      navigator.clipboard
+        .writeText(joinUrl)
+        .then(done)
+        .catch(() => (legacyCopy(joinUrl) ? done() : fail()));
+    } else {
+      try {
+        if (legacyCopy(joinUrl)) done();
+        else fail();
+      } catch {
+        fail();
+      }
+    }
   }
 
   function share() {
     if (navigator.share) {
-      navigator.share({ title: "谁是卧底", url: joinUrl }).catch(() => {});
+      navigator.share({
+        title: "谁是卧底",
+        text: `来和我一起玩"谁是卧底"，房间号 ${code}`,
+        url: joinUrl,
+      }).catch((e) => {
+        // 用户主动取消（AbortError）不处理，其余情况降级为复制链接
+        if (e?.name !== "AbortError") copyLink();
+      });
     } else {
       copyLink();
     }
   }
 
-  function saveNickname() {
+  function openEditor(p: PublicPlayer) {
+    setNameInput(p.nickname);
+    setAvatarSel(p.avatar);
+    setEditing(p);
+  }
+
+  function saveProfile() {
+    if (!editing) return;
     const name = nameInput.trim();
-    setEditingName(false);
-    if (!name) return;
-    run(() => api.rename(code, identity.playerToken, myId, name));
+    if (!name && avatarSel === editing.avatar) {
+      setEditing(null);
+      return;
+    }
+    const finalName = name || editing.nickname;
+    const isSelf = editing.id === myId;
+    setEditing(null);
+    if (isSelf) {
+      run(() => api.rename(code, identity.playerToken, myId, finalName, avatarSel));
+    } else {
+      run(() => api.renameLocal(code, identity.hostToken!, editing.id, finalName, avatarSel));
+    }
   }
 
   function renderPlayer(p: PublicPlayer) {
     const isMe = p.id === myId;
+    const editable = isMe || (isHost && p.type === "LOCAL");
     return (
       <div
         key={p.id}
         className="flex items-center gap-3 rounded-2xl bg-cyan-50/60 px-4 py-3"
       >
-        <span className="text-3xl">{p.avatar}</span>
-        {isMe && editingName ? (
-          <input
-            autoFocus
-            value={nameInput}
-            onChange={(e) => setNameInput(e.target.value)}
-            onBlur={saveNickname}
-            onKeyDown={(e) => e.key === "Enter" && saveNickname()}
-            maxLength={12}
-            className="flex-1 bg-white rounded-xl px-3 py-1.5 text-lg font-semibold text-slate-800 outline-none border-2 border-cyan-400"
-          />
-        ) : (
-          <button
-            onClick={() => {
-              if (isMe) {
-                setNameInput(p.nickname);
-                setEditingName(true);
-              }
-            }}
-            className={`flex-1 text-left text-lg font-semibold text-slate-800 ${
-              isMe ? "cursor-pointer" : "cursor-default"
-            }`}
-          >
+        <button
+          onClick={() => editable && openEditor(p)}
+          disabled={!editable}
+          className="flex items-center gap-3 flex-1 text-left disabled:cursor-default"
+        >
+          <span className="text-3xl">{p.avatar}</span>
+          <span className="flex-1 text-lg font-semibold text-slate-800">
             {p.nickname}
-            {isMe && <span className="ml-2 text-xs text-cyan-500">点按改名</span>}
-          </button>
+            {editable && (
+              <span
+                className={`ml-2 text-xs font-normal ${
+                  p.type === "LOCAL" ? "text-amber-500" : "text-cyan-500"
+                }`}
+              >
+                点按编辑
+              </span>
+            )}
+          </span>
+        </button>
+        {p.type === "LOCAL" && (
+          <span className="text-xs font-bold text-white bg-amber-500 rounded-full px-2.5 py-1">
+            线下
+          </span>
         )}
         {p.isHost && (
           <span className="text-xs font-bold text-white bg-cyan-600 rounded-full px-2.5 py-1">
@@ -200,6 +252,67 @@ export default function Lobby({ code, state, identity, isHost, myId, refresh }: 
 
       {error && <p className="text-red-500 text-sm text-center">{error}</p>}
 
+      {editing && (
+        <div
+          className="fixed inset-0 z-50 bg-slate-900/50 flex items-center justify-center px-6"
+          onClick={() => setEditing(null)}
+        >
+          <div
+            className="w-full max-w-sm bg-white rounded-3xl p-6 flex flex-col gap-5 animate-fade-in-up"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <p className="text-lg font-semibold text-slate-800 text-center">
+              {editing.id === myId ? "编辑资料" : "编辑线下玩家"}
+            </p>
+            <div className="flex items-center gap-4">
+              <span className="text-5xl shrink-0">{avatarSel || "👤"}</span>
+              <input
+                autoFocus
+                value={nameInput}
+                onChange={(e) => setNameInput(e.target.value)}
+                onKeyDown={(e) => e.key === "Enter" && saveProfile()}
+                maxLength={12}
+                placeholder="昵称"
+                className="flex-1 bg-cyan-50 rounded-xl px-4 py-2.5 text-lg font-semibold text-slate-800 outline-none border-2 border-cyan-400 focus:border-cyan-500"
+              />
+            </div>
+            <div>
+              <p className="text-sm text-slate-500 mb-2">选择头像</p>
+              <div className="grid grid-cols-6 gap-1.5">
+                {AVATARS.map((a) => (
+                  <button
+                    key={a}
+                    onClick={() => setAvatarSel(a)}
+                    className={`aspect-square rounded-xl flex items-center justify-center text-2xl border-2 transition-colors ${
+                      avatarSel === a
+                        ? "bg-cyan-100 border-cyan-400"
+                        : "bg-cyan-50/40 border-transparent hover:border-cyan-200"
+                    }`}
+                  >
+                    {a}
+                  </button>
+                ))}
+              </div>
+            </div>
+            <div className="flex gap-3">
+              <button
+                onClick={() => setEditing(null)}
+                className="flex-1 rounded-2xl bg-slate-100 text-slate-600 font-semibold py-3"
+              >
+                取消
+              </button>
+              <button
+                onClick={saveProfile}
+                disabled={busy}
+                className="flex-1 rounded-2xl bg-cyan-600 text-white font-semibold py-3 shadow-lg shadow-cyan-200 disabled:opacity-50"
+              >
+                保存
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {isHost ? (
         <button
           onClick={() => run(() => api.start(code, identity.hostToken!))}
@@ -211,6 +324,16 @@ export default function Lobby({ code, state, identity, isHost, myId, refresh }: 
       ) : (
         <p className="text-center text-slate-400 py-3">等待房主开始游戏…</p>
       )}
+
+      <LeaveRoomButton
+        code={code}
+        playerToken={identity.playerToken}
+        message={
+          isHost
+            ? "你是房主，退出将解散房间，所有玩家会被移出。确定退出吗？"
+            : "确定退出房间吗？"
+        }
+      />
     </div>
   );
 }

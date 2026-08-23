@@ -42,9 +42,14 @@ export async function renamePlayer(
   code: string,
   token: string | null,
   playerId: string,
-  name: string
+  name: string,
+  avatar?: string | null
 ): Promise<void> {
-  await callDo((stub) => stub.renamePlayer(code, token, playerId, name));
+  await callDo((stub) => stub.renamePlayer(code, token, playerId, name, avatar ?? null));
+}
+
+export async function leaveRoom(code: string, token: string | null): Promise<void> {
+  await callDo((stub) => stub.leaveRoom(code, token));
 }
 
 export async function updateSettings(

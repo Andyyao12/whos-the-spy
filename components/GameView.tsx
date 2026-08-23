@@ -5,6 +5,7 @@ import { api } from "@/lib/client";
 import { PublicPlayer } from "@/lib/types";
 import { RoomCtx } from "./RoomCtx";
 import MyWordCard from "./MyWordCard";
+import LeaveRoomButton from "./LeaveRoomButton";
 
 export default function GameView({ code, state, identity, isHost, refresh }: RoomCtx) {
   const [confirmTarget, setConfirmTarget] = useState<PublicPlayer | null>(null);
@@ -89,6 +90,11 @@ export default function GameView({ code, state, identity, isHost, refresh }: Roo
               <span className="text-sm font-medium text-slate-700 max-w-full truncate px-1">
                 {p.nickname}
               </span>
+              {p.type === "LOCAL" && (
+                <span className="text-[10px] font-bold text-white bg-amber-500 rounded-full px-2 py-0.5">
+                  线下
+                </span>
+              )}
               {p.revealed && (
                 <span
                   className={`text-xs font-bold rounded-full px-2 py-0.5 ${
@@ -150,6 +156,13 @@ export default function GameView({ code, state, identity, isHost, refresh }: Roo
           </div>
         </div>
       )}
+
+      <LeaveRoomButton
+        code={code}
+        playerToken={identity.playerToken}
+        label="退出游戏"
+        message="退出后将无法继续本局游戏，确定退出吗？"
+      />
 
       {localTarget && (
         <div

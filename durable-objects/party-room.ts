@@ -3,11 +3,11 @@ import type { Room, Player, PublicRoomState, PublicPlayer } from "../lib/types";
 import { randomRoomCode } from "../lib/code";
 import { pickWordPair } from "../lib/word-bank";
 import { RoomError } from "../lib/room-error";
+import { AVATARS, isValidAvatar } from "../lib/avatars";
 
 const ROOM_TTL_MS = 6 * 60 * 60 * 1000; // 6 小时
 const MAX_PLAYERS = 16;
 const MIN_PLAYERS = 3;
-const AVATARS = ["🐼", "🦊", "🐸", "🐯", "🐵", "🐶", "🐱", "🐰"];
 const ROOMS_KEY = "rooms";
 
 // RPC 返回统一结构，避免 DO 抛错序列化不可控
@@ -263,19 +263,51 @@ export class PartyRoomDO extends DurableObject<CloudflareEnv> {
     }
   }
 
+  async leaveRoom(code: string, token: string | null): Promise<DoResult<null>> {
+    try {
+      await this.ensureLoaded();
+      const room = this.getRoomOrThrow(code);
+      const me = this.findPlayerOrThrow(room, token);
+      if (me.isHost) {
+        // 房主退出 = 解散房间，所有玩家被移出
+        this.rooms.delete(code);
+        await this.save();
+        return ok(null);
+      }
+      const idx = room.players.findIndex((p) => p.id === me.id);
+      if (idx !== -1) {
+        room.players.splice(idx, 1);
+        room.spyCount = defaultSpyCount(room.players.length);
+      }
+      await this.save();
+      return ok(null);
+    } catch (e) {
+      return toErr(e);
+    }
+  }
+
   async renamePlayer(
     code: string,
     token: string | null,
     playerId: string,
-    name: string
+    name: string,
+    avatar?: string | null
   ): Promise<DoResult<null>> {
     try {
       await this.ensureLoaded();
       const room = this.getRoomOrThrow(code);
-      const player = this.findPlayerOrThrow(room, token);
-      if (player.id !== playerId) throw new RoomError("只能修改自己的昵称", 403);
+      const me = this.findPlayerOrThrow(room, token);
+      const target = room.players.find((p) => p.id === playerId);
+      if (!target) throw new RoomError("玩家不存在", 404);
+      // 仅允许：修改自己，或房主修改线下玩家
+      const isSelf = me.id === target.id;
+      const isHostEditingLocal = me.isHost && target.type === "LOCAL";
+      if (!isSelf && !isHostEditingLocal) {
+        throw new RoomError("只能修改自己的昵称", 403);
+      }
       const trimmed = name.trim().slice(0, 12);
-      if (trimmed) player.displayName = trimmed;
+      if (trimmed) target.displayName = trimmed;
+      if (avatar && isValidAvatar(avatar)) target.avatar = avatar;
       await this.save();
       return ok(null);
     } catch (e) {

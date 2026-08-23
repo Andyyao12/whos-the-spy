@@ -1,5 +1,5 @@
 import { renamePlayer } from "@/lib/room-store";
-import { ok, fail, playerToken } from "@/lib/api";
+import { ok, fail, playerToken, hostToken } from "@/lib/api";
 import { cleanRoomCode } from "@/lib/code";
 
 export const dynamic = "force-dynamic";
@@ -13,9 +13,10 @@ export async function PATCH(
     const body = (await req.json().catch(() => ({}))) as Record<string, unknown>;
     await renamePlayer(
       cleanRoomCode(decodeURIComponent(raw)),
-      playerToken(req),
+      playerToken(req) ?? hostToken(req),
       playerId,
-      typeof body.nickname === "string" ? body.nickname : ""
+      typeof body.nickname === "string" ? body.nickname : "",
+      typeof body.avatar === "string" ? body.avatar : null
     );
     return ok({ ok: true });
   } catch (err) {

@@ -82,6 +82,18 @@ export const api = {
     request(`/api/rooms/${code}/reset`, { method: "POST", hostToken }),
   settings: (code: string, hostToken: string, body: { topicCategory?: string; spyCount?: number }) =>
     request(`/api/rooms/${code}/settings`, { method: "POST", hostToken, body }),
-  rename: (code: string, playerToken: string, playerId: string, nickname: string) =>
-    request(`/api/rooms/${code}/players/${playerId}`, { method: "PATCH", playerToken, body: { nickname } }),
+  rename: (code: string, playerToken: string, playerId: string, nickname: string, avatar?: string) =>
+    request(`/api/rooms/${code}/players/${playerId}`, {
+      method: "PATCH",
+      playerToken,
+      body: { nickname, ...(avatar ? { avatar } : {}) },
+    }),
+  renameLocal: (code: string, hostToken: string, playerId: string, nickname: string, avatar?: string) =>
+    request(`/api/rooms/${code}/players/${playerId}`, {
+      method: "PATCH",
+      hostToken,
+      body: { nickname, ...(avatar ? { avatar } : {}) },
+    }),
+  leave: (code: string, playerToken: string) =>
+    request(`/api/rooms/${code}/leave`, { method: "POST", playerToken }),
 };
